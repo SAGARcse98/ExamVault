@@ -1,0 +1,6 @@
+.next
+node_modules
+public/uploads
+scripts/seed_test_note.ts
+test_seed.ts
+.env.local
