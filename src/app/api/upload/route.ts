@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+    secure: true, // Uses CLOUDINARY_URL automatically
+});
 
 export async function POST(request: Request) {
     try {
@@ -19,26 +22,35 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "No file provided" }, { status: 400 });
         }
 
-        // Determine upload directory
-        const subDir = type === "video" ? "videos" : "pdfs";
-        const uploadDir = path.join(process.cwd(), "public", "uploads", subDir);
-
-        // Ensure directory exists
-        await mkdir(uploadDir, { recursive: true });
-
-        // Create unique filename with timestamp
-        const timestamp = Date.now();
-        const originalName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const fileName = `${timestamp}_${originalName}`;
-        const filePath = path.join(uploadDir, fileName);
-
-        // Write file to disk
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-        await writeFile(filePath, buffer);
 
-        // Return the public URL
-        const publicUrl = `/uploads/${subDir}/${fileName}`;
+        // Upload to Cloudinary using upload_stream
+        const uploadResult = await new Promise((resolve, reject) => {
+            const resourceType = type === "video" ? "video" : (file.type === "application/pdf" ? "raw" : "auto");
+
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    resource_type: resourceType,
+                    folder: `examvault/${type}s`,
+                    public_id: file.name.replace(/\.[^/.]+$/, ""), // Original name without extension
+                },
+                (error, result) => {
+                    if (error) {
+                        console.error("Cloudinary upload failed:", error);
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
+                }
+            );
+
+            uploadStream.end(buffer);
+        });
+
+        const publicUrl = (uploadResult as any).secure_url;
+        const fileName = (uploadResult as any).original_filename + "." + ((uploadResult as any).format || ((file.name.split('.').pop() || '')));
+
         return NextResponse.json({ url: publicUrl, fileName }, { status: 201 });
     } catch (error: any) {
         console.error("Upload error:", error);
