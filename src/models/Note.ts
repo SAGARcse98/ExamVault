@@ -5,6 +5,7 @@ export interface INoteDocument extends mongoose.Document {
     topicId: mongoose.Types.ObjectId;
     title: string;
     pdfUrl: string;
+    pdfDownloadUrl?: string;
     description: string;
     isImportant: boolean;
     createdAt: Date;
@@ -17,6 +18,7 @@ const NoteSchema = new Schema<INoteDocument>(
         topicId: { type: Schema.Types.ObjectId, ref: "Topic", required: true },
         title: { type: String, required: true, trim: true },
         pdfUrl: { type: String, required: true },
+        pdfDownloadUrl: { type: String, default: "" },
         description: { type: String, default: "" },
         isImportant: { type: Boolean, default: false },
     },

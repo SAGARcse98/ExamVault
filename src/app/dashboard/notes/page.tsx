@@ -61,6 +61,27 @@ function NotesContent() {
         n.title.toLowerCase().includes(search.toLowerCase())
     );
 
+    const handleDownload = async (note: any) => {
+        // Use pdfDownloadUrl if available (has fl_attachment), otherwise fall back to pdfUrl
+        const url = note.pdfDownloadUrl || note.pdfUrl;
+        const fileName = note.title.replace(/[^a-z0-9]/gi, "_") + ".pdf";
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        } catch {
+            // Fallback: open in new tab
+            window.open(url, "_blank");
+        }
+    };
+
     return (
         <div className="animate-fade-in">
             <div style={{ marginBottom: 24 }}>
@@ -160,14 +181,13 @@ function NotesContent() {
                                         >
                                             <ExternalLink className="w-3 h-3" /> View PDF
                                         </a>
-                                        <a
-                                            href={note.pdfUrl}
-                                            download
+                                        <button
+                                            onClick={() => handleDownload(note)}
                                             className="btn-secondary"
-                                            style={{ fontSize: 12, padding: "6px 14px" }}
+                                            style={{ fontSize: 12, padding: "6px 14px", display: "flex", alignItems: "center", gap: 4 }}
                                         >
                                             <Download className="w-3 h-3" /> Download
-                                        </a>
+                                        </button>
                                         <button
                                             onClick={() => toggleFavorite(note._id)}
                                             className="btn-icon"

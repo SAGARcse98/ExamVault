@@ -14,7 +14,7 @@ export default function AdminNotesPage() {
     const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [form, setForm] = useState({
-        title: "", pdfUrl: "", description: "", subjectId: "", topicId: "", isImportant: false,
+        title: "", pdfUrl: "", pdfDownloadUrl: "", description: "", subjectId: "", topicId: "", isImportant: false,
     });
 
     const fetchData = async () => {
@@ -40,7 +40,7 @@ export default function AdminNotesPage() {
             const res = await fetch("/api/upload", { method: "POST", body: formData });
             const data = await res.json();
             if (res.ok) {
-                setForm(prev => ({ ...prev, pdfUrl: data.url }));
+                setForm(prev => ({ ...prev, pdfUrl: data.url, pdfDownloadUrl: data.downloadUrl || data.url }));
             } else {
                 alert("Upload failed: " + data.error);
             }
@@ -61,7 +61,7 @@ export default function AdminNotesPage() {
             body: JSON.stringify(form),
         });
         setShowModal(false); setEditItem(null);
-        setForm({ title: "", pdfUrl: "", description: "", subjectId: "", topicId: "", isImportant: false });
+        setForm({ title: "", pdfUrl: "", pdfDownloadUrl: "", description: "", subjectId: "", topicId: "", isImportant: false });
         if (fileInputRef.current) fileInputRef.current.value = "";
         fetchData();
     };
@@ -75,7 +75,8 @@ export default function AdminNotesPage() {
     const openEdit = (n: any) => {
         setEditItem(n);
         setForm({
-            title: n.title, pdfUrl: n.pdfUrl, description: n.description || "",
+            title: n.title, pdfUrl: n.pdfUrl, pdfDownloadUrl: n.pdfDownloadUrl || n.pdfUrl || "",
+            description: n.description || "",
             subjectId: n.subjectId?._id || n.subjectId || "",
             topicId: n.topicId?._id || n.topicId || "",
             isImportant: n.isImportant || false,
@@ -90,7 +91,7 @@ export default function AdminNotesPage() {
         <div className="animate-fade-in">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#0F172A" }}>Notes Management</h2>
-                <button onClick={() => { setEditItem(null); setUploadMode("file"); setForm({ title: "", pdfUrl: "", description: "", subjectId: "", topicId: "", isImportant: false }); setShowModal(true); }} className="btn-primary">
+                <button onClick={() => { setEditItem(null); setUploadMode("file"); setForm({ title: "", pdfUrl: "", pdfDownloadUrl: "", description: "", subjectId: "", topicId: "", isImportant: false }); setShowModal(true); }} className="btn-primary">
                     <Plus className="w-4 h-4" /> Add Note
                 </button>
             </div>
