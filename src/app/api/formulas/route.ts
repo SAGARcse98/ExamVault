@@ -4,6 +4,9 @@ import Formula from "@/models/Formula";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+// Disable Next.js caching so new formulas appear immediately after being added
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
     try {
         await dbConnect();

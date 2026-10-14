@@ -3,13 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { v2 as cloudinary } from "cloudinary";
 
-// Increase Vercel's default body size limit (4.5MB) for file uploads
-export const config = {
-    api: {
-        bodyParser: false,
-        responseLimit: false,
-    },
-};
+export const dynamic = "force-dynamic";
 
 // Increase max duration for large file uploads on Vercel (seconds)
 export const maxDuration = 60;
@@ -47,7 +41,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "No file provided" }, { status: 400 });
         }
 
-        // Check file size: warn if over 50MB (Vercel Hobby plan struggles with very large files)
+        // Check file size limit
         const fileSizeMB = file.size / (1024 * 1024);
         if (fileSizeMB > 100) {
             return NextResponse.json(
@@ -63,16 +57,25 @@ export async function POST(request: Request) {
         const isVideo = type === "video";
 
         const uploadResult = await new Promise((resolve, reject) => {
-            // PDFs as "image" type lets Cloudinary compress and still serve as PDF.
-            // Videos as "video" type with quality:auto for Cloudinary-side compression.
-            const resourceType: "image" | "video" | "raw" | "auto" = isVideo
-                ? "video"
-                : isPdf
-                    ? "image"
-                    : "auto";
+            let resourceType: "image" | "video" | "raw" | "auto";
+            let publicId: string;
 
-            // Strip extension from public_id (Cloudinary adds format automatically)
-            const publicId = file.name.replace(/\.[^/.]+$/, "");
+            if (isVideo) {
+                // Videos: use "video" resource type with quality compression
+                resourceType = "video";
+                // Strip extension — Cloudinary adds it automatically for video/image
+                publicId = file.name.replace(/\.[^/.]+$/, "");
+            } else if (isPdf) {
+                // PDFs: MUST use "raw" resource type to preserve file bytes exactly.
+                // Using "image" corrupts the PDF by applying image processing transforms.
+                resourceType = "raw";
+                // For "raw" uploads, keep the .pdf extension in the public_id
+                // so Cloudinary serves it with the correct Content-Type.
+                publicId = file.name;
+            } else {
+                resourceType = "auto";
+                publicId = file.name.replace(/\.[^/.]+$/, "");
+            }
 
             const uploadOptions: Record<string, any> = {
                 resource_type: resourceType,
@@ -83,18 +86,12 @@ export async function POST(request: Request) {
 
             if (isVideo) {
                 // Compress video server-side on Cloudinary
-                // NOTE: No eager transforms — they can cause Vercel function timeouts
-                uploadOptions.quality = "auto:good";   // reduce file size automatically
-                uploadOptions.video_codec = "auto";     // best codec for content
+                uploadOptions.quality = "auto:good";
+                uploadOptions.video_codec = "auto";
             }
 
-            if (isPdf) {
-                // Compress PDF: lossy compression on embedded images inside the PDF
-                uploadOptions.quality = "auto:good";
-                uploadOptions.flags = "lossy";
-                uploadOptions.format = "pdf";
-                uploadOptions.pages = true;
-            }
+            // NOTE: No quality/compression options for PDFs —
+            // raw upload stores the file exactly as-is.
 
             const uploadStream = cloudinary.uploader.upload_stream(
                 uploadOptions,
@@ -114,16 +111,18 @@ export async function POST(request: Request) {
         const result = uploadResult as any;
         const publicUrl = result.secure_url;
 
-        // For PDFs: fl_attachment forces browser to download instead of displaying inline
+        // For PDFs: provide a separate download URL with fl_attachment so the
+        // browser downloads instead of trying to display inline via raw URL.
         let downloadUrl = publicUrl;
         if (isPdf) {
+            // raw URLs look like: /raw/upload/v.../folder/file.pdf
+            // We can still add Cloudinary transformation flags to raw URLs.
             downloadUrl = publicUrl.replace("/upload/", "/upload/fl_attachment/");
         }
 
-        const fileName =
-            result.original_filename +
-            "." +
-            (result.format || file.name.split(".").pop() || "");
+        const fileName = isPdf
+            ? file.name
+            : result.original_filename + "." + (result.format || file.name.split(".").pop() || "");
 
         return NextResponse.json({ url: publicUrl, downloadUrl, fileName }, { status: 201 });
     } catch (error: any) {

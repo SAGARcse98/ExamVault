@@ -1,12 +1,26 @@
 import { MongoClient } from "mongodb";
 import dns from "dns";
 
+import * as fs from "fs";
+
 // Fix DNS for Atlas SRV lookup
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
-const LOCAL_URI = "mongodb://localhost:27017";
-const ATLAS_URI = "mongodb+srv://sagucdac_db_user:bkaAroVl9U5kH9wj@cluster0.jx1mwrh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+let atlasUriFromEnv = process.env.MONGODB_URI;
+if (!atlasUriFromEnv && fs.existsSync(".env.local")) {
+    const envContent = fs.readFileSync(".env.local", "utf8");
+    const match = envContent.match(/^MONGODB_URI=["']?([^"'\r\n]+)["']?/m);
+    if (match) atlasUriFromEnv = match[1];
+}
+
+const LOCAL_URI = process.env.LOCAL_MONGODB_URI || "mongodb://127.0.0.1:27017";
+const ATLAS_URI = atlasUriFromEnv || process.env.ATLAS_URI;
 const DB_NAME = "ExamVault";
+
+if (!ATLAS_URI) {
+    console.error("❌ Please provide MONGODB_URI in .env.local or environment variable.");
+    process.exit(1);
+}
 
 async function migrate() {
     console.log("🔌 Connecting to local MongoDB...");

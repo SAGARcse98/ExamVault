@@ -113,7 +113,7 @@ export default function VideoPlayerPage() {
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen
                             />
-                        ) : video.videoUrl?.startsWith("/uploads/") ? (
+                        ) : video.videoUrl ? (
                             <video
                                 src={video.videoUrl}
                                 controls
@@ -124,7 +124,7 @@ export default function VideoPlayerPage() {
                             </video>
                         ) : (
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#94A3B8" }}>
-                                <p>Video URL: <a href={video.videoUrl} target="_blank" rel="noreferrer" style={{ color: "#06B6D4" }}>{video.videoUrl}</a></p>
+                                <p>Video unavailable</p>
                             </div>
                         )}
                     </div>

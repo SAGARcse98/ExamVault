@@ -3,8 +3,16 @@
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import * as fs from 'fs';
 
-const MONGODB_URI = 'mongodb://sagucdac_db_user:ExamVault@ac-ttble8c-shard-00-00.jx1mwrh.mongodb.net:27017,ac-ttble8c-shard-00-01.jx1mwrh.mongodb.net:27017,ac-ttble8c-shard-00-02.jx1mwrh.mongodb.net:27017/ExamVault?ssl=true&replicaSet=atlas-j4ze51-shard-0&authSource=admin&appName=Cluster0';
+let mongoUri = process.env.MONGODB_URI;
+if (!mongoUri && fs.existsSync('.env.local')) {
+    const envContent = fs.readFileSync('.env.local', 'utf8');
+    const match = envContent.match(/^MONGODB_URI=["']?([^"'\r\n]+)["']?/m);
+    if (match) mongoUri = match[1];
+}
+
+const MONGODB_URI = mongoUri || 'mongodb://127.0.0.1:27017/ExamVault';
 
 async function seed() {
     try {

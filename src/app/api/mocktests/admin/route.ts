@@ -4,6 +4,8 @@ import MockTest from "@/models/MockTest";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 // Admin endpoint - returns ALL tests including unpublished, with questions
 export async function GET() {
     try {
